@@ -18,4 +18,5 @@
 
   # Also, you can override an existing "system" value:
   # ["uart.baud_rate", 9600],
+  ["i2c.enable", true],
 ]
