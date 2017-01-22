@@ -20,6 +20,7 @@
   # ["uart.baud_rate", 9600],
   ["i2c.enable", true],
   # ["mqtt.server", "broker.mqttdashboard.com:1883"],
+  ["update.timeout", 20],
   ["device.id", "test"],
   ["device.password", "test"],
 ]
