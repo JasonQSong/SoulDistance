@@ -19,7 +19,7 @@
   # Also, you can override an existing "system" value:
   # ["uart.baud_rate", 9600],
   ["i2c.enable", true],
-  ["mqtt.server", "broker.mqttdashboard.com:1883"],
+  # ["mqtt.server", "broker.mqttdashboard.com:1883"],
   ["device.id", "test"],
   ["device.password", "test"],
 ]
