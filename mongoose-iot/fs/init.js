@@ -6,7 +6,12 @@ load('api_gpio.js');
 let PIN = ffi('int get_led_gpio_pin()')();  // Helper C function that returns a
                                             // built-in LED GPIO
 GPIO.set_mode(PIN, GPIO.MODE_OUTPUT);
+GPIO.set_mode(PIN, GPIO.MODE_OUTPUT);
 Timer.set(500 /* milliseconds */, 1 /* repeat */, function(pin) {
   let value = GPIO.toggle(pin);
   print(value ? 'Tick' : 'Tock');
+  let gpio0value = GPIO.read(0);
+  print(gpio0value);
 }, PIN);
+
+
