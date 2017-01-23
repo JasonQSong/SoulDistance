@@ -1,0 +1,38 @@
+{
+  "i2c": {
+    "enable": true
+  }, 
+  "update": {
+    "url": "", 
+    "interval": 30, 
+    "timeout": 30
+  }, 
+  "wifi": {
+    "sta": {
+      "enable": false
+    }, 
+    "ap": {
+      "enable": true, 
+      "ssid": "SoulDistance_??????", 
+      "pass": "SoulDistance", 
+      "hidden": false, 
+      "channel": 6, 
+      "max_connections": 10, 
+      "ip": "192.168.4.1", 
+      "netmask": "255.255.255.0", 
+      "gw": "192.168.4.1", 
+      "dhcp_start": "192.168.4.2", 
+      "dhcp_end": "192.168.4.100", 
+      "keep_enabled": true, 
+      "trigger_on_gpio": -1
+    }
+  }, 
+  "device": {
+    "id": "soul-distance", 
+    "password": "soul-distance"
+  }, 
+  "debug": {
+    "enable_prompt": true, 
+    "factory_reset_gpio": 0 
+  } 
+}

@@ -18,18 +18,9 @@
 
   # Also, you can override an existing "system" value:
   # ["uart.baud_rate", 9600],
-  ["i2c.enable", true],
   ["mqtt.server", ""],
-  ["update.url", ""],
-  ["update.interval", 30],
-  ["update.timeout", 30],
   ["wifi.ap.ssid", "SoulDistance_??????"],
   ["wifi.ap.pass", "SoulDistance"],
-  ["device.id", "test"],
-  ["device.password", "test"],
-  ["debug.level", 4],
-  ["debug.stdout_uart", 0],
-  ["debug.stderr_uart", 0],
-  ["debug.enable_prompt", true],
-  ["debug.factory_reset_gpio", 0],
+  ["device.id", "soul-distance"],
+  ["device.password", "soul-distance"],
 ]
