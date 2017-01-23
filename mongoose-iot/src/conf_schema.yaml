@@ -23,6 +23,13 @@
   ["update.url", ""],
   ["update.interval", 30],
   ["update.timeout", 30],
+  ["wifi.ap.ssid", "SoulDistance_??????"],
+  ["wifi.ap.pass", "SoulDistance"],
   ["device.id", "test"],
   ["device.password", "test"],
+  ["debug.level", 4],
+  ["debug.stdout_uart", 0],
+  ["debug.stderr_uart", 0],
+  ["debug.enable_prompt", ture],
+  ["debug.factory_reset_gpio", 0],
 ]
