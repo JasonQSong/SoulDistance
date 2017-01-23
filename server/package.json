@@ -1,0 +1,8 @@
+{
+  "name": "soul-distance-server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": {},
+  "author": "Jason Song",
+  "license": "MIT"
+}
