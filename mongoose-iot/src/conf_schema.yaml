@@ -30,6 +30,6 @@
   ["debug.level", 4],
   ["debug.stdout_uart", 0],
   ["debug.stderr_uart", 0],
-  ["debug.enable_prompt", ture],
+  ["debug.enable_prompt", true],
   ["debug.factory_reset_gpio", 0],
 ]
