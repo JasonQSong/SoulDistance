@@ -1,4 +1,4 @@
-version: "1.0"
+version: "1.0.1"
 arch: esp8266
 mongoose_os_version: master
 sources:
