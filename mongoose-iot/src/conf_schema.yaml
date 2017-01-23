@@ -23,4 +23,5 @@
   ["wifi.ap.pass", "SoulDistance"],
   ["device.id", "soul-distance"],
   ["device.password", "soul-distance"],
+  ["debug.factory_reset_gpio", 0],
 ]
