@@ -37,6 +37,7 @@ app.get('/distance', (req, res) => {
   })
 })
 
-app.listen(80, () => {
-  console.info('Soul Distance Server listening on port 80!')
+const port=process.env.PORT||80
+app.listen(port, () => {
+  console.info(`Soul Distance Server listening on port ${port}!`)
 })

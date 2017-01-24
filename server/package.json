@@ -1,5 +1,6 @@
 {
   "name": "soul-distance-server",
+  "description": "Soul Distance Server. Uploading location and calculating distance",
   "version": "1.0.0",
   "main": "index.js",
   "repository": {},
