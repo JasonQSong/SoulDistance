@@ -9,7 +9,6 @@ console.log(config.GCLOUD_PROJECT)
 //   projectId: config.get('GCLOUD_PROJECT')
 // });
 
-
 const app = express()
 
 app.get('/', (req, res) => {
@@ -37,7 +36,7 @@ app.get('/distance', (req, res) => {
   })
 })
 
-const port=process.env.PORT||80
+const port = process.env.PORT || 80
 app.listen(port, () => {
   console.info(`Soul Distance Server listening on port ${port}!`)
 })
