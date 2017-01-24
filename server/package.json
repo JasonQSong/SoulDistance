@@ -6,9 +6,10 @@
   "author": "Jason Song",
   "license": "MIT",
   "scripts": {
-    "start": "nodemon App/index.js --exec babel-node",
-    "build": "babel App -d dist",
-    "serve": "node dist/index.js"
+    "start": "nodemon app/index.js --exec babel-node",
+    "build": "babel app -d dist",
+    "serve": "node dist/index.js",
+    "lint": "standard --fix"
   },
   "devDependencies": {
     "babel-cli": "^6.22.2",

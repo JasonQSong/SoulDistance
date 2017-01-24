@@ -1,8 +1,32 @@
-import http from 'http'
+import express from 'express'
 
-http.createServer((req, res) => {
-  res.writeHead(200, {'Content-Type': 'text/plain'})
-  res.end('Hello World\n')
-}).listen(1337, '0.0.0.0')
+const app = express()
 
-console.log('Server running at http://0.0.0.0:1337')
+app.get('/', (req, res) => {
+  console.info(req.method + ' ' + req.originalUrl)
+  res.status(200).send('Soul Distance Server')
+})
+app.get('/UTC', (req, res) => {
+  console.info(`${req.method} ${req.originalUrl}`)
+  res.status(200).send(new Date().getTime())
+})
+
+app.post('/location/:deviceId', (req, res) => {
+  console.info(`${req.method} ${req.originalUrl}`)
+  console.info(`latitude:${req.body.latitude} longitude:${req.body.longitude}`)
+  res.status(200).end()
+})
+
+app.get('/distance', (req, res) => {
+  console.info(`${req.method} ${req.originalUrl}`)
+  console.info(`local:${req.query.local} remote:${req.query.remote}`)
+  res.status(200).json({
+    localUpdateUTC: 0,
+    remoteUpdateUTC: 0,
+    distance: 'Todo'
+  })
+})
+
+app.listen(8080, () => {
+  console.info('Soul Distance Server listening on port 80!')
+})
