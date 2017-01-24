@@ -1,4 +1,14 @@
 import express from 'express'
+// import Datastore from '@google-cloud/datastore'
+import config from '../config'
+
+console.log(config)
+
+console.log(config.GCLOUD_PROJECT)
+// const ds = Datastore({
+//   projectId: config.get('GCLOUD_PROJECT')
+// });
+
 
 const app = express()
 
@@ -27,6 +37,6 @@ app.get('/distance', (req, res) => {
   })
 })
 
-app.listen(8080, () => {
+app.listen(80, () => {
   console.info('Soul Distance Server listening on port 80!')
 })
