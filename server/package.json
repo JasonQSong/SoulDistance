@@ -19,6 +19,7 @@
     "standard": "^8.6.0"
   },
   "dependencies": {
-    "express": "^5.0.0-alpha.2"
+    "express": "^5.0.0-alpha.2",
+    "geolib": "^2.0.22"
   }
 }
