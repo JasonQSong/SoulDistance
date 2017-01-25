@@ -137,12 +137,12 @@ const Router = async({event, context, callback}) => {
           return await HandlerUTCGet()
       }
       return null
-    case '/Location/{Device}':
+    case '/Location':
       switch (event.httpMethod) {
         case 'POST':
           const body = JSON.parse(event.body)
           return await HandlerLocationPost({
-            Device: Number(event.pathParameters.Device),
+            Device: Number(event.queryStringParameters.Device), 
             Latitude: Number(body.Latitude),
             Longitude: Number(body.Longitude)})
       }
