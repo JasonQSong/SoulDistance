@@ -2,7 +2,7 @@ import AWS from 'aws-sdk'
 import Geolib from 'geolib'
 
 AWS.config.update({
-  region: 'us-west-1',
+  region: 'us-west-1'
   // endpoint: 'http://localhost:8000'
 })
 
@@ -37,14 +37,14 @@ const PutDeviceLocation = async ({Device, Latitude, Longitude}) => {
     TableName: 'SoulDistanceLocation',
     Item: {
       'Device': Device,
-      'UpdateUTC': Date.now(),
+      'UpdateUTC': new Date().getTime(),
       'Latitude': Latitude,
       'Longitude': Longitude
     }
   }
   const PutResult = () => new Promise((resolve, reject) => {
     DocumentClient.put(DeviceLocation, (err, data) => {
-      if (err) { reject({status: 501, err}) }
+      if (err) { reject({status: 520, err}) }
       resolve(data)
     })
   })
@@ -63,7 +63,7 @@ const QueryDeviceLocation = async ({Device}) => {
   }
   const QueryResult = () => new Promise((resolve, reject) => {
     DocumentClient.query(DeviceLocationQuery, (err, data) => {
-      if (err) { reject({status: 501, err}) }
+      if (err) { reject({status: 521, err}) }
       resolve(data)
     })
   })
@@ -80,7 +80,7 @@ const HandlerIndexGet = async() => {
 }
 
 const HandlerUTCGet = async() => {
-  return Date.now()
+  return (new Date().getTime()).toString()
 }
 
 const HandlerLocationPost = async({Device, Latitude, Longitude}) => {
@@ -91,17 +91,18 @@ const HandlerLocationPost = async({Device, Latitude, Longitude}) => {
     console.error('Unable to add item.')
     throw err
   }
+  return 'SUCCESS'
 }
 
-const HandlerLocationGet = async({Device}) => {
-  try {
-    const DeviceLocation = await QueryDeviceLocation({Device})
-    console.log('Query succeeded.', DeviceLocation)
-  } catch (err) {
-    console.log('Unable to query.')
-    throw err
-  }
-}
+// const HandlerLocationGet = async({Device}) => {
+//   try {
+//     const DeviceLocation = await QueryDeviceLocation({Device})
+//     console.log('Query succeeded.', DeviceLocation)
+//   } catch (err) {
+//     console.log('Unable to query.')
+//     throw err
+//   }
+// }
 
 const HandlerDistanceGet = async({Local, Remote}) => {
   const LocalDeviceLocation = await QueryDeviceLocation({Device: Local})
@@ -110,37 +111,67 @@ const HandlerDistanceGet = async({Local, Remote}) => {
     { latitude: LocalDeviceLocation.Latitude, longitude: LocalDeviceLocation.Longitude },
     { latitude: RemoteDeviceLocation.Latitude, longitude: RemoteDeviceLocation.Longitude },
   )
-  return {
+  return JSON.stringify({
     LocalUpdateUTC: LocalDeviceLocation.UpdateUTC,
     RemoteUpdateUTC: RemoteDeviceLocation.UpdateUTC,
     Distance: Distance
-  }
+  })
 }
 
-const HandlerRoot = async({event, context}) => {
-  const RUN = true
-  const NORUN = false
-  if (NORUN) return HandlerIndexGet()
-  if (NORUN) return HandlerUTCGet()
-  if (NORUN) return HandlerLocationPost({Device: 1, Latitude: 37.776129, Longitude: -122.417336})
-  if (NORUN) return HandlerLocationPost({Device: 2, Latitude: 37.876129, Longitude: -122.417336})
-  if (NORUN) return HandlerLocationGet({Device: 3})
-  if (RUN) return HandlerDistanceGet({Local: 1, Remote: 2})
-  return null
-}
-
-export const handler = (event, context, callback) => {
+const Router = async({event, context, callback}) => {
   console.log('event:')
   console.log(event)
   console.log('context:')
   console.log(context)
-  HandlerRoot({event, context}).then((data) => {
-    callback(null, data)
+  console.log(`Switching event.resource ${event.resource}`)
+  switch (event.resource) {
+    case '/':
+      switch (event.httpMethod) {
+        case 'GET':
+          return await HandlerIndexGet()
+      }
+      return null
+    case '/UTC':
+      switch (event.httpMethod) {
+        case 'GET':
+          return await HandlerUTCGet()
+      }
+      return null
+    case '/Location/{Device}':
+      switch (event.httpMethod) {
+        case 'POST':
+          const body = JSON.parse(event.body)
+          return await HandlerLocationPost({
+            Device: Number(event.pathParameters.Device),
+            Latitude: Number(body.Latitude),
+            Longitude: Number(body.Longitude)})
+      }
+      return null
+    case '/Distance':
+      switch (event.httpMethod) {
+        case 'GET':
+          return await HandlerDistanceGet({
+            Local: Number(event.queryStringParameters.Local), 
+            Remote: Number(event.queryStringParameters.Remote)})
+      }
+      return null
+  }
+  return null
+}
+
+export const handler = (event, context, callback) => {
+  Router({event, context, callback}).then((response) => {
+    console.log('response:')
+    console.log(response)
+    if (response) {
+      callback(null, {statusCode: 200, body: response.toString()})
+    } else {
+      callback({statusCode: 404, body: 'Not Found'}, null)
+    }
   }).catch((err) => {
-    callback(err, null)
+    console.log('err:')
+    console.log(err)
+    callback({statusCode: err.status, body: err.err.toString()}, null)
   })
 }
-handler(null, null, (err, data) => {
-  console.log('err:', err, 'data:', data)
-})
 
