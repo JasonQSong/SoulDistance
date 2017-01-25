@@ -3,7 +3,7 @@ import Geolib from 'geolib'
 
 AWS.config.update({
   region: 'us-west-1',
-  endpoint: 'http://localhost:8000'
+  // endpoint: 'http://localhost:8000'
 })
 
 // const dynamodb = new AWS.DynamoDB()
@@ -112,7 +112,7 @@ const HandlerDistanceGet = async({Local, Remote}) => {
   )
   return {
     LocalUpdateUTC: LocalDeviceLocation.UpdateUTC,
-    RemoteUpdateUTC: LocalDeviceLocation.UpdateUTC,
+    RemoteUpdateUTC: RemoteDeviceLocation.UpdateUTC,
     Distance: Distance
   }
 }
@@ -130,6 +130,10 @@ const HandlerRoot = async({event, context}) => {
 }
 
 export const handler = (event, context, callback) => {
+  console.log('event:')
+  console.log(event)
+  console.log('context:')
+  console.log(context)
   HandlerRoot({event, context}).then((data) => {
     callback(null, data)
   }).catch((err) => {
