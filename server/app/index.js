@@ -75,6 +75,10 @@ const QueryDeviceLocation = async ({Device}) => {
   return data.Items[0]
 }
 
+const HandlerIndexGet = async() => {
+  return 'Soul Distance API Server'
+}
+
 const HandlerUTCGet = async() => {
   return Date.now()
 }
@@ -103,9 +107,9 @@ const HandlerDistanceGet = async({Local, Remote}) => {
   const LocalDeviceLocation = await QueryDeviceLocation({Device: Local})
   const RemoteDeviceLocation = await QueryDeviceLocation({Device: Remote})
   const Distance = Geolib.getDistance(
-      { latitude: LocalDeviceLocation.Latitude, longitude: LocalDeviceLocation.Longitude },
-      { latitude: RemoteDeviceLocation.Latitude, longitude: RemoteDeviceLocation.Longitude },
-      )
+    { latitude: LocalDeviceLocation.Latitude, longitude: LocalDeviceLocation.Longitude },
+    { latitude: RemoteDeviceLocation.Latitude, longitude: RemoteDeviceLocation.Longitude },
+  )
   return {
     LocalUpdateUTC: LocalDeviceLocation.UpdateUTC,
     RemoteUpdateUTC: LocalDeviceLocation.UpdateUTC,
@@ -116,6 +120,7 @@ const HandlerDistanceGet = async({Local, Remote}) => {
 const HandlerRoot = async({event, context}) => {
   const RUN = true
   const NORUN = false
+  if (NORUN) return HandlerIndexGet()
   if (NORUN) return HandlerUTCGet()
   if (NORUN) return HandlerLocationPost({Device: 1, Latitude: 37.776129, Longitude: -122.417336})
   if (NORUN) return HandlerLocationPost({Device: 2, Latitude: 37.876129, Longitude: -122.417336})
