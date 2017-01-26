@@ -2,7 +2,7 @@
   "swagger": "2.0",
   "info": {
     "version": "2017-01-25T14:02:00Z",
-    "title": "SoulDistanceAPI"
+    "title": "SoulDistance"
   },
   "host": "qaqmyfflxa.execute-api.us-east-1.amazonaws.com",
   "basePath": "/SoulDistance",
