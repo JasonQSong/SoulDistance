@@ -10,6 +10,8 @@
 #include "fw/src/mgos_dlsym.h"
 #include "mjs.h"
 
+#include "Adafruit_NeoPixel.h"
+
 #if CS_PLATFORM == CS_P_ESP8266
 #define LED_GPIO 2 /* On ESP-12E there is a blue LED connected to GPIO2  */
 #elif CS_PLATFORM == CS_P_ESP32

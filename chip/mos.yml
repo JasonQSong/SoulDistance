@@ -3,6 +3,7 @@ arch: esp8266
 mongoose_os_version: master
 sources:
 - src
+- Adafruit_NeoPixel
 filesystem:
 - fs
 extra_files: []
