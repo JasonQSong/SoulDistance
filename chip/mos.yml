@@ -4,6 +4,7 @@ mongoose_os_version: master
 sources:
 - src
 - Adafruit_NeoPixel
+- Adafruit_NeoPixel/platforms/esp8266
 filesystem:
 - fs
 extra_files: []

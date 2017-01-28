@@ -10,7 +10,7 @@
 #include "fw/src/mgos_dlsym.h"
 #include "mjs.h"
 
-#include "Adafruit_NeoPixel.h"
+#include "platforms/esp8266/esp_neopixel.h"
 
 #if CS_PLATFORM == CS_P_ESP8266
 #define LED_GPIO 2 /* On ESP-12E there is a blue LED connected to GPIO2  */
@@ -25,18 +25,32 @@
 #error Unknown platform
 #endif
 
-int get_led_gpio_pin(void) {
+int get_led_gpio_pin(void)
+{
   return LED_GPIO;
 }
 
-enum mgos_app_init_result mgos_app_init(void) {
-  /* Initialize JavaScript engine */
-  struct mjs *mjs = mjs_create();
-  mjs_set_ffi_resolver(mjs, mgos_dlsym);
-  mjs_err_t err = mjs_exec_file(mjs, "init.js", NULL);
-  if (err != MJS_OK) {
-    LOG(LL_ERROR, ("MJS exec error: %s\n", mjs_strerror(mjs, err)));
+enum mgos_app_init_result mgos_app_init(void)
+{
+
+  Adafruit_NeoPixel *NeoPixelMatrix = calloc(1, sizeof(Adafruit_NeoPixel));
+  Adafruit_NeoPixel____init___n_p_t(NeoPixelMatrix, 10, 15, NEO_GRB + NEO_KHZ800);
+  Adafruit_NeoPixel__begin(NeoPixelMatrix);
+  for (uint16_t i = 0; i < Adafruit_NeoPixel__numPixels(NeoPixelMatrix); i++)
+  {
+    Adafruit_NeoPixel__setPixelColor_n_r_g_b(NeoPixelMatrix, i, 127,0, 0);
   }
+  Adafruit_NeoPixel__show(NeoPixelMatrix);
+
+  /* Initialize JavaScript engine */
+  // struct mjs *mjs = mjs_create();
+  // mjs_set_ffi_resolver(mjs, mgos_dlsym);
+  // mjs_err_t err = mjs_exec_file(mjs, "init.js", NULL);
+  // if (err != MJS_OK)
+  // {
+  //   LOG(LL_ERROR, ("MJS exec error: %s\n", mjs_strerror(mjs, err)));
+  // }
+
 
   return MGOS_APP_INIT_SUCCESS;
 }
