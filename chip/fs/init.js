@@ -16,13 +16,14 @@ let device_remote=2;
 
 GPIO.set_mode(PIN, GPIO.MODE_OUTPUT);
 
-let neo_pixel_matrix=new Adafruit_NeoPixel();
-NeoPixel.__init___n_p_t(neo_pixel_matrix,neo_pixel_num,neo_pixel_pin,NeoPixel.NEO_GRB);
-NeoPixel.begin(neo_pixel_matrix);
+// let neo_pixel_matrix=new Adafruit_NeoPixel();
+// NeoPixel.__init___n_p_t(neo_pixel_matrix,neo_pixel_num,neo_pixel_pin,NeoPixel.NEO_GRB);
+// NeoPixel.begin(neo_pixel_matrix);
 
-Timer.set(60* 1000,1,function(){
+// Timer.set(60 * 1000, 1, function(){
+//   //Read config and distance from server
 
-})
+// })
 
 let main_loop=function(){
   let value = GPIO.toggle(PIN);
