@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "common/platform.h"
 #include "common/cs_file.h"
@@ -88,15 +89,24 @@ static void runner_breath(void *arg)
 
 static void dynamic_distance_handler(struct mg_connection *nc, int ev, void *ev_data)
 {
-  CONSOLE_LOG(LL_INFO, ("dynamic_distance_handler"));
   if (ev == MG_EV_HTTP_REPLY)
   {
     CONSOLE_LOG(LL_INFO, ("HTTP_REPLY"));
     struct http_message *hm = (struct http_message *)ev_data;
     nc->flags |= MG_F_CLOSE_IMMEDIATELY;
-    CONSOLE_LOG(LL_INFO, ("%s\n", hm->message.p));
+    CONSOLE_LOG(LL_INFO, ("message: %s\n", hm->message.p));
+    char *data = strstr(hm->message.p, "\n\n");
+    CONSOLE_LOG(LL_INFO, ("x: %d LocalUpdateUTC:%d Distance: %d", x, LocalUpdateUTC, Distance));
+    uint32_t LocalUpdateUTC, RemoteUpdateUTC, Distance;
+    int x = json_scanf(
+        data, hm->message.len - (data - hm->message.p), "{LocalUpdateUTC: %d, RemoteUpdateUTC: %d, Distance:%d}",
+        &LocalUpdateUTC, &RemoteUpdateUTC, &Distance);
+    CONSOLE_LOG(LL_INFO, ("x: %d LocalUpdateUTC:%d Distance: %d", x, LocalUpdateUTC, Distance));
+    // target_red =
   }
 }
+
+const char *dynamic_distance_url = "https://4jvqd73602.execute-api.us-west-1.amazonaws.com/SoulDistance/Distance?Local=1&Remote=2";
 
 static void updater_distance(void *arg)
 {
@@ -105,10 +115,12 @@ static void updater_distance(void *arg)
   {
     return;
   }
-  const char *dynamic_distance_url = "https://4jvqd73602.execute-api.us-west-1.amazonaws.com/SoulDistance/Distance?Local=1&Remote=2";
   // const char *dynamic_distance_url = "https://www.google.com/";
   CONSOLE_LOG(LL_INFO, ("updater_distance"));
-  mg_connect_http(mgos_get_mgr(),dynamic_distance_handler,dynamic_distance_url, NULL,NULL);
+  struct mg_connect_opts opts;
+  memset(&opts, 0, sizeof(opts));
+  opts.ssl_ca_cert = "VeriSignG5.pem";
+  mg_connect_http_opt(mgos_get_mgr(), dynamic_distance_handler, opts, dynamic_distance_url, NULL, NULL);
 }
 
 static void update_firmware_result_cb(struct update_context *ctx)
@@ -162,18 +174,8 @@ enum mgos_app_init_result mgos_app_init(void)
   // {
   //   LOG(LL_ERROR, ("MJS exec error: %s\n", mjs_strerror(mjs, err)));
   // }
-  mgos_set_timer(get_cfg()->update.interval * 1000 /* ms */, true /* repeat */, update_firmware, NULL);
+  mgos_set_timer(get_cfg()->update.interval * 1000000 /* ms */, true /* repeat */, update_firmware, NULL);
   return MGOS_APP_INIT_SUCCESS;
 }
-
-
-
-
-
-
-
-
-
-
 
 
