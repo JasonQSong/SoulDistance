@@ -8,6 +8,8 @@
 #include "fw/src/mgos_timers.h"
 #include "fw/src/mgos_hal.h"
 #include "fw/src/mgos_dlsym.h"
+#include "fw/src/mgos_console.h"
+#include "fw/src/mgos_updater_http.h"
 #include "mjs.h"
 
 #include "platforms/esp8266/esp_neopixel.h"
@@ -25,28 +27,130 @@
 #error Unknown platform
 #endif
 
+bool updating_firmware;
+static struct update_context *s_ctx;
+
 int get_led_gpio_pin(void)
 {
   return LED_GPIO;
 }
 
+#define NEOPIXEL_NUM 40
+#define NEOPIXEL_PIN 15
+#define MAX_STEPS 300
 
+double dynamic_distance;
+
+Adafruit_NeoPixel *neopixel_matrix;
+double *neopixel_matrix_brightness_mask;
+
+uint8_t target_red = 127;
+uint8_t target_green = 0;
+uint8_t target_blue = 0;
+
+static void step_show(uint32_t step, uint8_t target_red, uint8_t target_green, uint8_t target_blue)
+{
+  uint8_t step_red = step * target_red / MAX_STEPS;
+  uint8_t step_green = step * target_green / MAX_STEPS;
+  uint8_t step_blue = step * target_blue / MAX_STEPS;
+  uint8_t tmp_red, tmp_green, tmp_blue;
+  for (uint16_t neopixel_index = 0; neopixel_index < NEOPIXEL_NUM; neopixel_index++)
+  {
+    double neopixel_brightness = neopixel_matrix_brightness_mask[neopixel_index];
+    tmp_red = step_red * neopixel_brightness;
+    tmp_green = step_green * neopixel_brightness;
+    tmp_blue = step_blue * neopixel_brightness;
+    Adafruit_NeoPixel__setPixelColor_n_r_g_b(neopixel_matrix, neopixel_index, tmp_red, tmp_green, tmp_blue);
+  }
+  Adafruit_NeoPixel__show(neopixel_matrix);
+}
+
+static void runner_breath(void *arg)
+{
+  (void)arg;
+  if (updating_firmware)
+  {
+    mgos_set_timer(1000 /* ms */, false /* repeat */, runner_breath, NULL);
+    return;
+  }
+  for (uint32_t step = 0; step < 100; step++)
+  {
+    step_show(step, target_red, target_green, target_blue);
+  }
+  for (uint32_t step = 100; step > 0; step--)
+  {
+    step_show(step, target_red, target_green, target_blue);
+  }
+  step_show(0, target_red, target_green, target_blue);
+  mgos_set_timer(1000 /* ms */, false /* repeat */, runner_breath, NULL);
+}
+
+static void updater_distance(void *arg)
+{
+  (void)arg;
+  if (updating_firmware)
+  {
+    return;
+  }
+}
+
+static void update_firmware_timeout_cb(void *arg)
+{
+  (void)arg;
+  updating_firmware = false;
+}
+
+static void update_firmware_result_cb(struct update_context *ctx)
+{
+  if (ctx != s_ctx)
+    return;
+  updating_firmware = false;
+}
+
+static void update_firmware(void *arg)
+{
+  (void)arg;
+  updating_firmware = true;
+  s_ctx = updater_context_create();
+  if (s_ctx == NULL)
+  {
+    mgos_set_timer(get_cfg()->update.timeout * 1000 /* ms */, false /* repeat */, update_firmware_timeout_cb, NULL);
+  }
+  else
+  {
+    s_ctx->ignore_same_version = true;
+    s_ctx->fctx.commit_timeout = get_cfg()->update.timeout;
+    s_ctx->result_cb = update_firmware_result_cb;
+    mgos_updater_http_start(s_ctx, get_cfg()->update.url);
+  }
+}
 
 enum mgos_app_init_result mgos_app_init(void)
 {
+  updating_firmware = false;
+  neopixel_matrix_brightness_mask = calloc(NEOPIXEL_NUM, sizeof(double));
+  for (uint16_t i = 0; i < NEOPIXEL_NUM; i++)
+  {
+    neopixel_matrix_brightness_mask[i] = 1;
+  }
+  neopixel_matrix_brightness_mask[0] = 0.25;
+  neopixel_matrix_brightness_mask[1] = 0.5;
+  neopixel_matrix_brightness_mask[2] = 0.75;
+  neopixel_matrix = Adafruit_NeoPixel____init___n_p_t(NEOPIXEL_NUM, NEOPIXEL_PIN, NEO_GRB);
+  Adafruit_NeoPixel__begin(neopixel_matrix);
+  dynamic_distance = 0;
+  mgos_set_timer(0 /* ms */, false /* repeat */, runner_breath, NULL);
+  mgos_set_timer(5000 /* ms */, true /* repeat */, updater_distance, NULL);
 
   /* Initialize JavaScript engine */
-  struct mjs *mjs = mjs_create();
-  mjs_set_ffi_resolver(mjs, mgos_dlsym);
-  mjs_err_t err = mjs_exec_file(mjs, "init.js", NULL);
-  if (err != MJS_OK)
-  {
-    LOG(LL_ERROR, ("MJS exec error: %s\n", mjs_strerror(mjs, err)));
-  }
-
-
-
-
+  // struct mjs *mjs = mjs_create();
+  // mjs_set_ffi_resolver(mjs, mgos_dlsym);
+  // mjs_err_t err = mjs_exec_file(mjs, "init.js", NULL);
+  // if (err != MJS_OK)
+  // {
+  //   LOG(LL_ERROR, ("MJS exec error: %s\n", mjs_strerror(mjs, err)));
+  // }
+  mgos_set_timer(get_cfg()->update.interval * 1000 /* ms */, true /* repeat */, update_firmware, NULL);
   return MGOS_APP_INIT_SUCCESS;
-  
 }
+
