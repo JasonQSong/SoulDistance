@@ -10,6 +10,7 @@
 #include "fw/src/mgos_dlsym.h"
 #include "fw/src/mgos_console.h"
 #include "fw/src/mgos_updater_http.h"
+#include "fw/src/mgos_mongoose.h"
 #include "mjs.h"
 
 #include "platforms/esp8266/esp_neopixel.h"
@@ -85,6 +86,18 @@ static void runner_breath(void *arg)
   mgos_set_timer(1000 /* ms */, false /* repeat */, runner_breath, NULL);
 }
 
+static void dynamic_distance_handler(struct mg_connection *nc, int ev, void *ev_data)
+{
+  CONSOLE_LOG(LL_INFO, ("dynamic_distance_handler"));
+  if (ev == MG_EV_HTTP_REPLY)
+  {
+    CONSOLE_LOG(LL_INFO, ("HTTP_REPLY"));
+    struct http_message *hm = (struct http_message *)ev_data;
+    nc->flags |= MG_F_CLOSE_IMMEDIATELY;
+    CONSOLE_LOG(LL_INFO, ("%s\n", hm->message.p));
+  }
+}
+
 static void updater_distance(void *arg)
 {
   (void)arg;
@@ -92,12 +105,10 @@ static void updater_distance(void *arg)
   {
     return;
   }
-}
-
-static void update_firmware_timeout_cb(void *arg)
-{
-  (void)arg;
-  updating_firmware = false;
+  const char *dynamic_distance_url = "https://4jvqd73602.execute-api.us-west-1.amazonaws.com/SoulDistance/Distance?Local=1&Remote=2";
+  // const char *dynamic_distance_url = "https://www.google.com/";
+  CONSOLE_LOG(LL_INFO, ("updater_distance"));
+  mg_connect_http(mgos_get_mgr(),dynamic_distance_handler,dynamic_distance_url, NULL,NULL);
 }
 
 static void update_firmware_result_cb(struct update_context *ctx)
@@ -114,7 +125,7 @@ static void update_firmware(void *arg)
   s_ctx = updater_context_create();
   if (s_ctx == NULL)
   {
-    mgos_set_timer(get_cfg()->update.timeout * 1000 /* ms */, false /* repeat */, update_firmware_timeout_cb, NULL);
+    mgos_set_timer(1000 /* ms */, false /* repeat */, update_firmware, NULL);
   }
   else
   {
@@ -127,6 +138,7 @@ static void update_firmware(void *arg)
 
 enum mgos_app_init_result mgos_app_init(void)
 {
+  mgos_upd_commit();
   updating_firmware = false;
   neopixel_matrix_brightness_mask = calloc(NEOPIXEL_NUM, sizeof(double));
   for (uint16_t i = 0; i < NEOPIXEL_NUM; i++)
@@ -153,4 +165,15 @@ enum mgos_app_init_result mgos_app_init(void)
   mgos_set_timer(get_cfg()->update.interval * 1000 /* ms */, true /* repeat */, update_firmware, NULL);
   return MGOS_APP_INIT_SUCCESS;
 }
+
+
+
+
+
+
+
+
+
+
+
 
