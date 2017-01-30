@@ -30,30 +30,33 @@ int get_led_gpio_pin(void)
   return LED_GPIO;
 }
 
+
 Adafruit_NeoPixel *NeoPixelMatrix;
+Adafruit_NeoPixel * get_neo_pixel_matrix(){
+  return NeoPixelMatrix;
+}
 uint8_t c;
 static void main_loop(void *arg) {
   (void) arg;
   bool current_level = mgos_gpio_toggle(LED_GPIO);
   LOG(LL_INFO, ("%s", (current_level ? "Tick" : "Tock")));
+  LOG(LL_INFO, ("%d", (micros())));
 
   for (uint16_t i = 0; i < Adafruit_NeoPixel__numPixels(NeoPixelMatrix); i++)
   {
-    Adafruit_NeoPixel__setPixelColor_n_c(NeoPixelMatrix, i,Adafruit_NeoPixel____static__Color_r_g_b(c,0,0));
+    Adafruit_NeoPixel__setPixelColor_n_c(NeoPixelMatrix, i,Adafruit_NeoPixel____static__Color_r_g_b(c,0,c));
   }
   Adafruit_NeoPixel__show(NeoPixelMatrix);
   c+=1;
-  if(c>30){
+  if(c>126){
     c=0;
   }
-  mgos_set_timer(10 /* ms */, false /* repeat */, main_loop, NULL);
+  mgos_set_timer(0 /* ms */, false /* repeat */, main_loop, NULL);
 }
 
 enum mgos_app_init_result mgos_app_init(void)
 {
-
-  NeoPixelMatrix = calloc(1, sizeof(Adafruit_NeoPixel));
-  Adafruit_NeoPixel____init___n_p_t(NeoPixelMatrix, 40, 15, NEO_GRB + NEO_KHZ800);
+  NeoPixelMatrix = Adafruit_NeoPixel____init___n_p_t(40, 15, NEO_GRB + NEO_KHZ800);
   Adafruit_NeoPixel__begin(NeoPixelMatrix);
   c=0;
   mgos_set_timer(0 /* ms */, false /* repeat */, main_loop, NULL);
