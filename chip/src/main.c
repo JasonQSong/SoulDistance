@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "common/platform.h"
 #include "common/cs_file.h"
@@ -8,6 +9,9 @@
 #include "fw/src/mgos_timers.h"
 #include "fw/src/mgos_hal.h"
 #include "fw/src/mgos_dlsym.h"
+#include "fw/src/mgos_console.h"
+#include "fw/src/mgos_updater_http.h"
+#include "fw/src/mgos_mongoose.h"
 #include "mjs.h"
 
 #include "platforms/esp8266/esp_neopixel.h"
@@ -25,41 +29,142 @@
 #error Unknown platform
 #endif
 
+bool updating_firmware;
+static struct update_context *s_ctx;
+
 int get_led_gpio_pin(void)
 {
   return LED_GPIO;
 }
 
+#define NEOPIXEL_NUM 40
+#define NEOPIXEL_PIN 15
+#define MAX_STEPS 300
 
-Adafruit_NeoPixel *NeoPixelMatrix;
-Adafruit_NeoPixel * get_neo_pixel_matrix(){
-  return NeoPixelMatrix;
-}
-uint8_t c;
-static void main_loop(void *arg) {
-  (void) arg;
-  bool current_level = mgos_gpio_toggle(LED_GPIO);
-  LOG(LL_INFO, ("%s", (current_level ? "Tick" : "Tock")));
-  LOG(LL_INFO, ("%d", (micros())));
+double dynamic_distance;
 
-  for (uint16_t i = 0; i < Adafruit_NeoPixel__numPixels(NeoPixelMatrix); i++)
+Adafruit_NeoPixel *neopixel_matrix;
+double *neopixel_matrix_brightness_mask;
+
+uint8_t target_red = 127;
+uint8_t target_green = 0;
+uint8_t target_blue = 0;
+
+static void step_show(uint32_t step, uint8_t target_red, uint8_t target_green, uint8_t target_blue)
+{
+  uint8_t step_red = step * target_red / MAX_STEPS;
+  uint8_t step_green = step * target_green / MAX_STEPS;
+  uint8_t step_blue = step * target_blue / MAX_STEPS;
+  uint8_t tmp_red, tmp_green, tmp_blue;
+  for (uint16_t neopixel_index = 0; neopixel_index < NEOPIXEL_NUM; neopixel_index++)
   {
-    Adafruit_NeoPixel__setPixelColor_n_c(NeoPixelMatrix, i,Adafruit_NeoPixel____static__Color_r_g_b(c,0,c));
+    double neopixel_brightness = neopixel_matrix_brightness_mask[neopixel_index];
+    tmp_red = step_red * neopixel_brightness;
+    tmp_green = step_green * neopixel_brightness;
+    tmp_blue = step_blue * neopixel_brightness;
+    Adafruit_NeoPixel__setPixelColor_n_r_g_b(neopixel_matrix, neopixel_index, tmp_red, tmp_green, tmp_blue);
   }
-  Adafruit_NeoPixel__show(NeoPixelMatrix);
-  c+=1;
-  if(c>126){
-    c=0;
+  Adafruit_NeoPixel__show(neopixel_matrix);
+}
+
+static void runner_breath(void *arg)
+{
+  (void)arg;
+  if (updating_firmware)
+  {
+    mgos_set_timer(1000 /* ms */, false /* repeat */, runner_breath, NULL);
+    return;
   }
-  mgos_set_timer(0 /* ms */, false /* repeat */, main_loop, NULL);
+  for (uint32_t step = 0; step < 100; step++)
+  {
+    step_show(step, target_red, target_green, target_blue);
+  }
+  for (uint32_t step = 100; step > 0; step--)
+  {
+    step_show(step, target_red, target_green, target_blue);
+  }
+  step_show(0, target_red, target_green, target_blue);
+  mgos_set_timer(1000 /* ms */, false /* repeat */, runner_breath, NULL);
+}
+
+static void dynamic_distance_handler(struct mg_connection *nc, int ev, void *ev_data)
+{
+  if (ev == MG_EV_HTTP_REPLY)
+  {
+    CONSOLE_LOG(LL_INFO, ("HTTP_REPLY"));
+    struct http_message *hm = (struct http_message *)ev_data;
+    nc->flags |= MG_F_CLOSE_IMMEDIATELY;
+    CONSOLE_LOG(LL_INFO, ("message: %s\n", hm->message.p));
+    char *data = strstr(hm->message.p, "\n\n");
+    CONSOLE_LOG(LL_INFO, ("x: %d LocalUpdateUTC:%d Distance: %d", x, LocalUpdateUTC, Distance));
+    uint32_t LocalUpdateUTC, RemoteUpdateUTC, Distance;
+    int x = json_scanf(
+        data, hm->message.len - (data - hm->message.p), "{LocalUpdateUTC: %d, RemoteUpdateUTC: %d, Distance:%d}",
+        &LocalUpdateUTC, &RemoteUpdateUTC, &Distance);
+    CONSOLE_LOG(LL_INFO, ("x: %d LocalUpdateUTC:%d Distance: %d", x, LocalUpdateUTC, Distance));
+    // target_red =
+  }
+}
+
+const char *dynamic_distance_url = "https://4jvqd73602.execute-api.us-west-1.amazonaws.com/SoulDistance/Distance?Local=1&Remote=2";
+
+static void updater_distance(void *arg)
+{
+  (void)arg;
+  if (updating_firmware)
+  {
+    return;
+  }
+  // const char *dynamic_distance_url = "https://www.google.com/";
+  CONSOLE_LOG(LL_INFO, ("updater_distance"));
+  struct mg_connect_opts opts;
+  memset(&opts, 0, sizeof(opts));
+  opts.ssl_ca_cert = "VeriSignG5.pem";
+  mg_connect_http_opt(mgos_get_mgr(), dynamic_distance_handler, opts, dynamic_distance_url, NULL, NULL);
+}
+
+static void update_firmware_result_cb(struct update_context *ctx)
+{
+  if (ctx != s_ctx)
+    return;
+  updating_firmware = false;
+}
+
+static void update_firmware(void *arg)
+{
+  (void)arg;
+  updating_firmware = true;
+  s_ctx = updater_context_create();
+  if (s_ctx == NULL)
+  {
+    mgos_set_timer(1000 /* ms */, false /* repeat */, update_firmware, NULL);
+  }
+  else
+  {
+    s_ctx->ignore_same_version = true;
+    s_ctx->fctx.commit_timeout = get_cfg()->update.timeout;
+    s_ctx->result_cb = update_firmware_result_cb;
+    mgos_updater_http_start(s_ctx, get_cfg()->update.url);
+  }
 }
 
 enum mgos_app_init_result mgos_app_init(void)
 {
-  NeoPixelMatrix = Adafruit_NeoPixel____init___n_p_t(40, 15, NEO_GRB + NEO_KHZ800);
-  Adafruit_NeoPixel__begin(NeoPixelMatrix);
-  c=0;
-  mgos_set_timer(0 /* ms */, false /* repeat */, main_loop, NULL);
+  mgos_upd_commit();
+  updating_firmware = false;
+  neopixel_matrix_brightness_mask = calloc(NEOPIXEL_NUM, sizeof(double));
+  for (uint16_t i = 0; i < NEOPIXEL_NUM; i++)
+  {
+    neopixel_matrix_brightness_mask[i] = 1;
+  }
+  neopixel_matrix_brightness_mask[0] = 0.25;
+  neopixel_matrix_brightness_mask[1] = 0.5;
+  neopixel_matrix_brightness_mask[2] = 0.75;
+  neopixel_matrix = Adafruit_NeoPixel____init___n_p_t(NEOPIXEL_NUM, NEOPIXEL_PIN, NEO_GRB);
+  Adafruit_NeoPixel__begin(neopixel_matrix);
+  dynamic_distance = 0;
+  mgos_set_timer(0 /* ms */, false /* repeat */, runner_breath, NULL);
+  mgos_set_timer(5000 /* ms */, true /* repeat */, updater_distance, NULL);
 
   /* Initialize JavaScript engine */
   // struct mjs *mjs = mjs_create();
@@ -69,10 +174,8 @@ enum mgos_app_init_result mgos_app_init(void)
   // {
   //   LOG(LL_ERROR, ("MJS exec error: %s\n", mjs_strerror(mjs, err)));
   // }
-
-
-
-
+  mgos_set_timer(get_cfg()->update.interval * 1000000 /* ms */, true /* repeat */, update_firmware, NULL);
   return MGOS_APP_INIT_SUCCESS;
-  
 }
+
+
