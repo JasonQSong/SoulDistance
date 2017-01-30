@@ -1,27 +1,35 @@
-version: "1.0.1"
+version: "1.0.0"
 arch: esp8266
 mongoose_os_version: master
 sources:
 - src
+- Adafruit_NeoPixel
+- Adafruit_NeoPixel/platforms/esp8266
 filesystem:
 - fs
-extra_files: []
-skeleton_version: 2016-11-24
-ffi_symbols: 
-  - mgos_mqtt_pub
-  - mgos_get_heap_size
+ffi_symbols:
+  - get_led_gpio_pin
+  - mg_send
+  - mgos_add_http_endpoint
+  - mgos_bind
+  - mgos_bind_http
+  - mgos_connect
+  - mgos_connect_http
+  - mgos_disconnect
   - mgos_get_free_heap_size
+  - mgos_get_heap_size
+  - mgos_get_http_message_param
   - mgos_get_storage_free_space
+  - mgos_get_sys_http_server
+  - mgos_gpio_*
+  - mgos_i2c_*
+  - mgos_mqtt_pub
+  - mgos_mqtt_sub
+  - mgos_set_timer
   - mgos_system_restart
   - mgos_usleep
-  - mgos_i2c_*
-  - mgos_gpio_*
-  - mgos_set_timer
-  - mgos_bind
-  - mgos_connect
-  - mgos_disconnect
-  - mg_send
-  - get_led_gpio_pin
+extra_files: []
+skeleton_version: 2016-11-24
 modules:
   - src: https://github.com/cesanta/mjs
 build_vars:
