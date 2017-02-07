@@ -69,9 +69,9 @@ sd_rgb place_hometown_rgb;
 sd_rgb place_infinity_rgb;
 
 struct mg_connection *UTC_conn = NULL;
-char *UTC_url = "https://4jvqd73602.execute-api.us-west-1.amazonaws.com/SoulDistance/UTC";
+char *UTC_url = "";
 struct mg_connection *dynamic_distance_conn = NULL;
-char *dynamic_distance_url = "https://4jvqd73602.execute-api.us-west-1.amazonaws.com/SoulDistance/Distance?Local=1&Remote=2";
+char *dynamic_distance_url = "";
 
 static void sd_initialize()
 {
@@ -92,10 +92,16 @@ static void sd_initialize()
   const char *sd_url = get_cfg()->soul_distance.url;
   const char *sd_local = get_cfg()->soul_distance.local;
   const char *sd_remote = get_cfg()->soul_distance.remote;
-  UTC_url = calloc(256, sizeof(char));
-  sprintf(UTC_url, "%s/UTC", sd_url);
-  dynamic_distance_url = calloc(256, sizeof(char));
-  sprintf(dynamic_distance_url, "%s/Distance?Local=%s&Remote=%s", sd_url, sd_local, sd_remote);
+  if (sd_url != NULL)
+  {
+    UTC_url = calloc(256, sizeof(char));
+    sprintf(UTC_url, "%s/UTC", sd_url);
+  }
+  if (sd_url != NULL && sd_local != NULL && sd_remote != NULL)
+  {
+    dynamic_distance_url = calloc(256, sizeof(char));
+    sprintf(dynamic_distance_url, "%s/Distance?Local=%s&Remote=%s", sd_url, sd_local, sd_remote);
+  }
 }
 
 static void step_show(uint32_t step)
@@ -328,16 +334,12 @@ enum mgos_app_init_result mgos_app_init(void)
   {
     neopixel_matrix_brightness_mask[i] = 1;
   }
-  neopixel_matrix_brightness_mask[0] = 0.25;
-  neopixel_matrix_brightness_mask[1] = 0.5;
-  neopixel_matrix_brightness_mask[2] = 0.75;
   neopixel_matrix = Adafruit_NeoPixel____init___n_p_t(NEOPIXEL_NUM, NEOPIXEL_PIN, NEO_GRB);
   Adafruit_NeoPixel__begin(neopixel_matrix);
   dynamic_distance = 0;
   mgos_set_timer(0 /* ms */, false /* repeat */, runner_breath, NULL);
-  mgos_set_timer(600000 /* ms */, true /* repeat */, update_UTC, NULL);
-  mgos_set_timer(10000 /* ms */, true /* repeat */, update_dynamic_distance, NULL);
-  update_dynamic_distance(NULL);
+  mgos_set_timer(3600*1000 /* ms */, true /* repeat */, update_UTC, NULL);
+  mgos_set_timer(60*1000 /* ms */, true /* repeat */, update_dynamic_distance, NULL);
 
   /* Initialize JavaScript engine */
   // struct mjs *mjs = mjs_create();

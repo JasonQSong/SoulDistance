@@ -1,10 +1,10 @@
 {
   "update": {
-    "url": "", 
+    "url": "http://server/fw.zip", 
     "interval": 86400 
   },
   "soul_distance":{
-    "url": "",
+    "url": "https://server/SoulDistance",
     "local": "1",
     "remote": "2"
   }

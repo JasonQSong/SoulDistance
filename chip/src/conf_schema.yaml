@@ -24,8 +24,9 @@
   ["device.id", "soul-distance"],
   ["device.password", "soul-distance"],
   ["debug.factory_reset_gpio", 0],
-  # ["soul_distance", "o", {"title": "Soul Distance"}],
-  # ["soul_distance.url", "s", {"title": "Soul Distance Server URL"}],
-  # ["soul_distance.local", "s", {"title": "Soul Distance Local Device ID"}],
-  # ["soul_distance.remote", "s", {"title": "Soul Distance Remote Device ID"}],
+  ["update.url", "http://server/fw.zip"],
+  ["soul_distance", "o",{"title": "Soul Distance"}],
+  ["soul_distance.url", "s", "https://server/SoulDistance", {"title": "Soul Distance Server URL"}],
+  ["soul_distance.local", "s", "1", {"title": "Soul Distance Local Device ID"}],
+  ["soul_distance.remote", "s", "2", {"title": "Soul Distance Remote Device ID"}],
 ]
