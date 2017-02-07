@@ -80,7 +80,9 @@ const HandlerIndexGet = async() => {
 }
 
 const HandlerUTCGet = async() => {
-  return (new Date().getTime()).toString()
+  return JSON.stringify({
+    UTC:(new Date().getTime())
+  }) 
 }
 
 const HandlerLocationPost = async({Device, Latitude, Longitude}) => {
