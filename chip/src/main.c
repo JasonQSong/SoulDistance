@@ -39,32 +39,78 @@ int get_led_gpio_pin(void)
 
 #define NEOPIXEL_NUM 40
 #define NEOPIXEL_PIN 15
+#define KM 1000
 
 double dynamic_distance;
 uint64_t UTC;
 
 Adafruit_NeoPixel *neopixel_matrix;
-double *neopixel_matrix_brightness_mask;
-
-uint8_t target_red = 127;
-uint8_t target_green = 0;
-uint8_t target_blue = 0;
-uint32_t max_steps = 60;
+typedef struct
+{
+  uint8_t r;
+  uint8_t g;
+  uint8_t b;
+} sd_rgb;
+sd_rgb target_rgb;
+uint32_t breath_max_steps = 100;
 uint32_t breath_interval = 1000;
 
-static void step_show(uint32_t step, uint8_t target_red, uint8_t target_green, uint8_t target_blue)
+double *neopixel_matrix_brightness_mask;
+double threshold_approaching = 1 * KM;
+double threshold_city = 10 * KM;
+double threshold_country = 2000 * KM;
+double threshold_hometown = 10000 * KM;
+double threshold_infinity = 20000 * KM;
+sd_rgb place_meet_rgb;
+sd_rgb place_approaching_rgb;
+sd_rgb place_city_rgb;
+sd_rgb place_country_rgb;
+sd_rgb place_hometown_rgb;
+sd_rgb place_infinity_rgb;
+
+struct mg_connection *UTC_conn = NULL;
+char *UTC_url = "https://4jvqd73602.execute-api.us-west-1.amazonaws.com/SoulDistance/UTC";
+struct mg_connection *dynamic_distance_conn = NULL;
+char *dynamic_distance_url = "https://4jvqd73602.execute-api.us-west-1.amazonaws.com/SoulDistance/Distance?Local=1&Remote=2";
+
+static void sd_initialize()
 {
-  uint8_t step_red = step * target_red / max_steps;
-  uint8_t step_green = step * target_green / max_steps;
-  uint8_t step_blue = step * target_blue / max_steps;
-  uint8_t tmp_red, tmp_green, tmp_blue;
+  target_rgb =
+      (sd_rgb){.r = 31, .g = 31, .b = 31};
+  place_meet_rgb =
+      (sd_rgb){.r = 127, .g = 63, .b = 0};
+  place_approaching_rgb =
+      (sd_rgb){.r = 0, .g = 15, .b = 31};
+  place_city_rgb =
+      (sd_rgb){.r = 7, .g = 31, .b = 7};
+  place_country_rgb =
+      (sd_rgb){.r = 0, .g = 0, .b = 31};
+  place_hometown_rgb =
+      (sd_rgb){.r = 15, .g = 31, .b = 0};
+  place_infinity_rgb =
+      (sd_rgb){.r = 31, .g = 31, .b = 31};
+  const char *sd_url = get_cfg()->soul_distance.url;
+  const char *sd_local = get_cfg()->soul_distance.local;
+  const char *sd_remote = get_cfg()->soul_distance.remote;
+  UTC_url = calloc(256, sizeof(char));
+  sprintf(UTC_url, "%s/UTC", sd_url);
+  dynamic_distance_url = calloc(256, sizeof(char));
+  sprintf(dynamic_distance_url, "%s/Distance?Local=%s&Remote=%s", sd_url, sd_local, sd_remote);
+}
+
+static void step_show(uint32_t step)
+{
+  sd_rgb step_rgb = (sd_rgb){.r = step * target_rgb.r / breath_max_steps,
+                             .g = step * target_rgb.g / breath_max_steps,
+                             .b = step * target_rgb.b / breath_max_steps};
+  sd_rgb tmp_rgb;
   for (uint16_t neopixel_index = 0; neopixel_index < NEOPIXEL_NUM; neopixel_index++)
   {
     double neopixel_brightness = neopixel_matrix_brightness_mask[neopixel_index];
-    tmp_red = step_red * neopixel_brightness;
-    tmp_green = step_green * neopixel_brightness;
-    tmp_blue = step_blue * neopixel_brightness;
-    Adafruit_NeoPixel__setPixelColor_n_r_g_b(neopixel_matrix, neopixel_index, tmp_red, tmp_green, tmp_blue);
+    tmp_rgb = (sd_rgb){.r = step_rgb.r * neopixel_brightness,
+                       .g = step_rgb.g * neopixel_brightness,
+                       .b = step_rgb.b * neopixel_brightness};
+    Adafruit_NeoPixel__setPixelColor_n_r_g_b(neopixel_matrix, neopixel_index, tmp_rgb.r, tmp_rgb.g, tmp_rgb.b);
   }
   Adafruit_NeoPixel__show(neopixel_matrix);
 }
@@ -74,17 +120,69 @@ static void runner_breath(void *arg)
   (void)arg;
   if (!updating_firmware)
   {
-    for (uint32_t step = 0; step < max_steps; step++)
+    for (uint32_t step = 0; step < breath_max_steps; step++)
     {
-      step_show(step, target_red, target_green, target_blue);
+      step_show(step);
     }
-    for (uint32_t step = max_steps; step > 0; step--)
+    for (uint32_t step = breath_max_steps; step > 0; step--)
     {
-      step_show(step, target_red, target_green, target_blue);
+      step_show(step);
     }
-    step_show(0, target_red, target_green, target_blue);
+    step_show(0);
   }
   mgos_set_timer(breath_interval /* ms */, false /* repeat */, runner_breath, NULL);
+}
+
+static void render()
+{
+  sd_rgb from_rgb = (sd_rgb){.r = 127, .g = 127, .b = 127};
+  sd_rgb to_rgb = (sd_rgb){.r = 127, .g = 127, .b = 127};
+  double position = 0;
+  breath_interval = 10000;
+  breath_max_steps = 1000;
+  if (dynamic_distance < threshold_approaching)
+  {
+    from_rgb = place_meet_rgb;
+    to_rgb = place_approaching_rgb;
+    position = 1.0 * (dynamic_distance - 0) / (threshold_approaching - 0);
+    breath_interval = 1000 + position * (10000 - 1000);
+    breath_max_steps = 100 + position * (1000 - 100);
+  }
+  else if (dynamic_distance < threshold_city)
+  {
+    from_rgb = place_approaching_rgb;
+    to_rgb = place_city_rgb;
+    position = 1.0 * (dynamic_distance - threshold_approaching) / (threshold_city - threshold_approaching);
+  }
+  else if (dynamic_distance < threshold_country)
+  {
+    from_rgb = place_city_rgb;
+    to_rgb = place_country_rgb;
+    position = 1.0 * (dynamic_distance - threshold_city) / (threshold_country - threshold_city);
+  }
+  else if (dynamic_distance < threshold_hometown)
+  {
+    from_rgb = place_country_rgb;
+    to_rgb = place_hometown_rgb;
+    position = 1.0 * (dynamic_distance - threshold_country) / (threshold_hometown - threshold_country);
+  }
+  else if (dynamic_distance < threshold_infinity)
+  {
+    from_rgb = place_hometown_rgb;
+    to_rgb = place_infinity_rgb;
+    position = 1.0 * (dynamic_distance - threshold_hometown) / (threshold_infinity - threshold_hometown);
+  }
+  else
+  {
+    from_rgb = place_infinity_rgb;
+    to_rgb = place_infinity_rgb;
+    position = 1.0;
+  }
+  target_rgb = (sd_rgb){
+      .r = (to_rgb.r > from_rgb.r) ? from_rgb.r + position * (to_rgb.r - from_rgb.r) : from_rgb.r - position * (from_rgb.r - to_rgb.r),
+      .g = (to_rgb.g > from_rgb.g) ? from_rgb.g + position * (to_rgb.g - from_rgb.g) : from_rgb.g - position * (from_rgb.g - to_rgb.g),
+      .b = (to_rgb.b > from_rgb.b) ? from_rgb.b + position * (to_rgb.b - from_rgb.b) : from_rgb.b - position * (from_rgb.b - to_rgb.b)};
+  CONSOLE_LOG(LL_INFO, ("Target RGB: %d %d %d\n", target_rgb.r, target_rgb.g, target_rgb.b));
 }
 
 static struct mg_str get_json_resonse_from_hm_message(struct mg_str message)
@@ -113,8 +211,6 @@ static struct mg_str get_json_resonse_from_hm_message(struct mg_str message)
   return mg_strdup(response);
 }
 
-struct mg_connection *UTC_conn = NULL;
-const char *UTC_url = "https://4jvqd73602.execute-api.us-west-1.amazonaws.com/SoulDistance/UTC";
 static void update_UTC_handler(struct mg_connection *nc, int ev, void *ev_data)
 {
   switch (ev)
@@ -132,6 +228,7 @@ static void update_UTC_handler(struct mg_connection *nc, int ev, void *ev_data)
     CONSOLE_LOG(LL_INFO, ("Response: [%.*s]\n", (int)response.len, response.p));
     int count = json_scanf(response.p, response.len, "{UTC: %lld}", &UTC);
     CONSOLE_LOG(LL_INFO, ("count: %d UTC:%lld", count, UTC));
+    render();
     return;
   case MG_EV_CLOSE:
     UTC_conn = NULL;
@@ -153,8 +250,6 @@ static void update_UTC(void *arg)
       mgos_get_mgr(), update_UTC_handler, opts, UTC_url, NULL, NULL);
 }
 
-struct mg_connection *dynamic_distance_conn = NULL;
-const char *dynamic_distance_url = "https://4jvqd73602.execute-api.us-west-1.amazonaws.com/SoulDistance/Distance?Local=1&Remote=2";
 static void update_dynamic_distance_handler(struct mg_connection *nc, int ev, void *ev_data)
 {
   switch (ev)
@@ -176,6 +271,7 @@ static void update_dynamic_distance_handler(struct mg_connection *nc, int ev, vo
         &LocalUpdateUTC, &RemoteUpdateUTC, &dynamic_distance);
     CONSOLE_LOG(LL_INFO, ("count: %d LocalUpdateUTC:%lld RemoteUpdateUTC: %lld, Distance: %llf",
                           count, LocalUpdateUTC, RemoteUpdateUTC, dynamic_distance));
+    render();
     return;
   case MG_EV_CLOSE:
     dynamic_distance_conn = NULL;
@@ -225,6 +321,7 @@ static void update_firmware(void *arg)
 enum mgos_app_init_result mgos_app_init(void)
 {
   mgos_upd_commit();
+  sd_initialize();
   updating_firmware = false;
   neopixel_matrix_brightness_mask = calloc(NEOPIXEL_NUM, sizeof(double));
   for (uint16_t i = 0; i < NEOPIXEL_NUM; i++)
@@ -238,7 +335,7 @@ enum mgos_app_init_result mgos_app_init(void)
   Adafruit_NeoPixel__begin(neopixel_matrix);
   dynamic_distance = 0;
   mgos_set_timer(0 /* ms */, false /* repeat */, runner_breath, NULL);
-  mgos_set_timer(2000 /* ms */, true /* repeat */, update_UTC, NULL);
+  mgos_set_timer(600000 /* ms */, true /* repeat */, update_UTC, NULL);
   mgos_set_timer(10000 /* ms */, true /* repeat */, update_dynamic_distance, NULL);
   update_dynamic_distance(NULL);
 
@@ -250,6 +347,6 @@ enum mgos_app_init_result mgos_app_init(void)
   // {
   //   LOG(LL_ERROR, ("MJS exec error: %s\n", mjs_strerror(mjs, err)));
   // }
-  mgos_set_timer(get_cfg()->update.interval * 1000000 /* ms */, true /* repeat */, update_firmware, NULL);
+  mgos_set_timer(get_cfg()->update.interval * 1000 /* ms */, true /* repeat */, update_firmware, NULL);
   return MGOS_APP_INIT_SUCCESS;
 }
